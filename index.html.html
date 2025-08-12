@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Anime Spirit </title>
+  <link rel="icon" href="profile.jpg" type="image/jpeg">
+  <style>
+    :root{--bg:#000;--text:#fff;--accent:#ff3b3b}
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);}
+
+    /* canvas full-screen (z-index toggled in JS) */
+    #fxCanvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;display:block;z-index:0}
+
+    /* Ensure site content sits above canvas by default */
+    .site{position:relative;z-index:1;min-height:100vh}
+
+    /* Banner area: allow visible overflow so avatar can overlap */
+    .banner{
+      position:relative;
+      width:100%;
+      height:320px;
+      background:linear-gradient(180deg,#071018,#0b0f14);
+      overflow:visible;
+      display:block;
+    }
+    .banner-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:0}
+
+    /* Doraemon-themed banner (minimal & interesting) */
+    .banner.dora-banner{
+      background: linear-gradient(135deg,#cfeeff 0%, #8fd5ff 45%, #56b7ff 100%);
+    }
+    .banner.dora-banner::before{
+      content:"";
+      position:absolute;
+      right:6%;
+      top:22%;
+      width:220px;
+      height:220px;
+      border-radius:50%;
+      background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.18) 0 30%, rgba(255,255,255,0.06) 31% 60%, transparent 61%);
+      transform: rotate(6deg);
+      z-index:1;
+      box-shadow: inset 0 -20px 40px rgba(0,0,0,0.06);
+    }
+    .banner.dora-banner::after{
+      content:"";
+      position:absolute;
+      left:6%;
+      bottom:10%;
+      width:88px;
+      height:64px;
+      border-radius:14px;
+      background:
+        radial-gradient(circle at 50% 22%, rgba(255,255,255,0.9) 0 28%, transparent 30%),
+        linear-gradient(180deg,#fff7d9,#ffd84d);
+      z-index:1;
+      transform:rotate(-6deg);
+      box-shadow:0 6px 12px rgba(0,0,0,0.12);
+      border:2px solid rgba(255,255,255,0.7);
+    }
+    .banner.dora-banner .banner-img{ display:none; } /* hide original when using dora banner */
+
+    /* Profile wrapper centered and overlapping the banner bottom */
+    .profile-wrap{
+      position:absolute;
+      left:50%;
+      bottom:-75px;
+      transform:translateX(-50%);
+      width:150px;
+      height:150px;
+      border-radius:50%;
+      border:5px solid #fff;
+      overflow:hidden;
+      background:#ddd;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:10001;
+      box-shadow:0 8px 24px rgba(0,0,0,0.6);
+    }
+    .profile-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+
+    /* subtle theme ring styles for avatar (no image replacement) */
+    .profile-wrap.dora{ border-color:#2b8df0; box-shadow:0 10px 30px rgba(43,141,240,0.12); }
+    .profile-wrap.sakura{ border-color:#ffd3e6; box-shadow:0 10px 30px rgba(255,105,180,0.08); }
+
+    /* Header/title area sits under the overlapping avatar */
+    header.main-header{padding-top:95px;text-align:center}
+
+    h1{margin:6px 0 6px;font-size:38px;letter-spacing:3px;font-weight:800;text-transform:uppercase}
+    .subtitle{text-align:center;color:#bbb;font-size:15px;margin-top:0;letter-spacing:1.5px}
+
+    /* --- NAV STYLES (new: colored underline + hover + kept visibility) --- */
+    .nav-bar{
+      display:flex;
+      justify-content:center;
+      flex-wrap:wrap;
+      gap:20px;
+      margin:22px 0 35px;
+      padding:0 12px;
+    }
+
+    /* base anchor */
+    .nav-bar a{
+      position:relative;
+      text-decoration:none;
+      color:var(--text);
+      font-weight:700;
+      padding:10px 8px;
+      font-size:18px;
+      cursor:pointer;
+      display:inline-block;
+      transition: color .22s ease;
+    }
+
+    /* neutralize any earlier .active color */
+    .nav-bar a.active { color: inherit; }
+
+    /* underline / pseudo */
+    .nav-bar a::after{
+      content:"";
+      position:absolute;
+      left:0;
+      bottom:-6px;
+      width:0;
+      height:3px;
+      background:transparent;
+      border-radius:4px;
+      transition: width .26s cubic-bezier(.2,.9,.2,1), background .18s ease;
+    }
+
+    /* ---------- PAGE-SPECIFIC NAV COLORS & HOVER/ACTIVE ---------- */
+
+    /* MYSTERY: light rainy blue underline */
+    .page-mystery .nav-bar a { color: #ffffff; }
+    .page-mystery .nav-bar a[data-tab="mystery"].active::after,
+    .page-mystery .nav-bar a[data-tab="mystery"]:hover::after {
+      width:100%; background:#6ec6ff; /* rainy light blue */
+    }
+    .page-mystery .nav-bar a[data-tab="mystery"].active,
+    .page-mystery .nav-bar a[data-tab="mystery"]:hover { color:#6ec6ff; }
+
+    /* NEWS: dark navy blue underline */
+    .page-news .nav-bar a { color: #ffffff; }
+    .page-news .nav-bar a[data-tab="news"].active::after,
+    .page-news .nav-bar a[data-tab="news"]:hover::after {
+      width:100%; background:#003366; /* dark navy */
+    }
+    .page-news .nav-bar a[data-tab="news"].active,
+    .page-news .nav-bar a[data-tab="news"]:hover { color:#003366; }
+
+    /* COMMUNITY: sakura pink underline */
+    .page-community .nav-bar a { color: #521b3a; } /* darker text on light pink header */
+    .page-community .nav-bar a[data-tab="community"].active::after,
+    .page-community .nav-bar a[data-tab="community"]:hover::after {
+      width:100%; background:#ff99cc; /* sakura pink */
+    }
+    .page-community .nav-bar a[data-tab="community"].active,
+    .page-community .nav-bar a[data-tab="community"]:hover { color:#ff99cc; }
+
+    /* QUIZ: Doraemon blue underline */
+    .page-quiz .nav-bar a { color: #022a46; } /* darker blue text on light blue header */
+    .page-quiz .nav-bar a[data-tab="quiz"].active::after,
+    .page-quiz .nav-bar a[data-tab="quiz"]:hover::after {
+      width:100%; background:#00aaff; /* doraemon blue */
+    }
+    .page-quiz .nav-bar a[data-tab="quiz"].active,
+    .page-quiz .nav-bar a[data-tab="quiz"]:hover { color:#00aaff; }
+
+    /* ABOUT: red underline */
+    .page-about .nav-bar a { color: #ffffff; }
+    .page-about .nav-bar a[data-tab="about"].active::after,
+    .page-about .nav-bar a[data-tab="about"]:hover::after {
+      width:100%; background:#ff3333;
+    }
+    .page-about .nav-bar a[data-tab="about"].active,
+    .page-about .nav-bar a[data-tab="about"]:hover { color:#ff3333; }
+
+    /* Themed page area below banner (keeps your previous theme style) */
+    body.dora-bg header.main-header, body.dora-bg main {
+      background: linear-gradient(180deg, rgba(235,250,255,0.95), rgba(255,255,255,1));
+      color: #05386b;
+    }
+    body.dora-bg h1{ color:#022a46; }
+    body.dora-bg .subtitle{ color:#145d8a }
+    body.dora-bg .nav-bar a.active{ color:#0b66b6; }
+
+    body.sakura-bg header.main-header, body.sakura-bg main {
+      background: linear-gradient(180deg, rgba(255,244,250,0.95), rgba(255,255,255,1));
+      color:#6b0032;
+    }
+    body.sakura-bg h1{ color:#521b3a; }
+    body.sakura-bg .subtitle{ color:#9c4660; }
+    body.sakura-bg .nav-bar a.active{ color:#ff5da8; }
+
+    .tab-content{display:none;padding:20px;text-align:center;position:relative;z-index:1}
+    .tab-content.active{display:block}
+
+    .news-visual{position:relative;height:320px;overflow:hidden;border-radius:8px;margin:0 auto;max-width:1100px}
+    .news-visual svg{display:block;width:100%;height:100%;object-fit:cover}
+    .news-text{position:absolute;left:20px;top:18px;color:#fff;text-shadow:0 6px 18px rgba(0,0,0,0.6)}
+
+    /* Debug overlay */
+    .dbg-overlay{position:fixed;right:12px;top:12px;background:rgba(0,0,0,0.6);color:#fff;padding:8px 10px;border-radius:8px;font-size:13px;z-index:100002;backdrop-filter:blur(4px);cursor:pointer}
+    .dbg-overlay .label{opacity:0.85;font-size:12px;margin-bottom:6px}
+    .dbg-item{display:flex;gap:8px;align-items:center}
+    .dot{width:10px;height:10px;border-radius:50%;background:#777;display:inline-block}
+    .dot.ok{background:#1bd06a}
+    .dot.err{background:#ff4d4d}
+    .dbg-overlay .hint{opacity:0.6;font-size:11px;margin-top:6px}
+
+    @media (max-width:768px){.banner{height:250px}h1{font-size:30px}.profile-wrap{width:120px;height:120px;bottom:-60px;border-width:4px}}
+    @media (max-width:600px){.banner{height:220px}h1{font-size:26px}.profile-wrap{width:110px;height:110px;bottom:-55px;border-width:4px}}
+  </style>
+</head>
+<body>
+  <!-- Canvas visual effects (rain/petals/stars) -->
+  <canvas id="fxCanvas" aria-hidden="true"></canvas>
+
+  <div class="site">
+    <!-- Banner with image element (drop banner.jpg next to this HTML file) -->
+    <div class="banner" id="banner">
+      <img id="bannerImg" class="banner-img" src="banner.jpg" alt="Banner">
+      <!-- Profile centered and overlapping (we will NOT change the image source in quiz) -->
+      <div class="profile-wrap" id="profileWrap">
+        <img id="profileImg" src="profile.jpg" alt="Profile">
+      </div>
+    </div>
+
+    <!-- Header content below overlapping avatar -->
+    <header class="main-header">
+      <h1>ANIME SPIRIT</h1>
+      <p class="subtitle">MYSTERY OF YOUR FAVORITE ANIMATION SHOWS</p>
+      <nav class="nav-bar" aria-label="main navigation">
+        <a class="active" data-tab="mystery">MYSTERY</a>
+        <a data-tab="news">NEWS</a>
+        <a data-tab="community">COMMUNITY</a>
+        <a data-tab="quiz">QUIZ</a>
+        <a data-tab="about">ABOUT</a>
+      </nav>
+    </header>
+
+    <!-- Tab content -->
+    <main>
+      <section id="mystery" class="tab-content active">
+        <h2 style="margin-top:28px">Mystery</h2>
+        <p style="max-width:900px;margin:12px auto 60px;color:#ddd">All your mysterious anime facts here...</p>
+      </section>
+
+      <section id="news" class="tab-content">
+        <div class="news-visual">
+          <svg viewBox="0 0 1200 400" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="g1" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#0b1524"/><stop offset="1" stop-color="#07101b"/></linearGradient></defs>
+            <rect width="1200" height="400" fill="url(#g1)"/>
+            <g fill="#0d1b2a"><rect x="0" y="150" width="120" height="250"/><rect x="130" y="110" width="160" height="290"/><rect x="310" y="90" width="220" height="310"/><rect x="540" y="130" width="160" height="270"/><rect x="720" y="85" width="240" height="315"/><rect x="980" y="140" width="220" height="260"/></g>
+            <g fill="#ffd" opacity="0.07"><rect x="140" y="130" width="8" height="12"/><rect x="160" y="130" width="8" height="12"/><rect x="330" y="110" width="8" height="12"/><rect x="350" y="110" width="8" height="12"/></g>
+          </svg>
+          <div class="news-text"><h2 style="margin:0 0 6px">Latest Anime News</h2><p style="margin:0;opacity:0.95;max-width:700px">Stay updated with release dates, trailers and studio announcements.</p></div>
+        </div>
+        <div style="max-width:1000px;margin:18px auto 60px;text-align:left;color:#ddd"><h3 style="margin-bottom:6px">Headlines</h3><ul style="margin-top:0;color:#ccc"><li>New season announcements and trailers</li><li>Studio interviews and behind-the-scenes</li><li>Event coverage and fan meetups</li></ul></div>
+      </section>
+
+      <section id="community" class="tab-content"><h2 style="margin-top:28px">Community</h2><p style="color:#ddd">Fan discussions and activities.</p></section>
+      <section id="quiz" class="tab-content"><h2 style="margin-top:28px">Quiz</h2><p style="color:#ddd">Quiz coming soon — Doraemon themed.</p></section>
+      <section id="about" class="tab-content"><h2 style="margin-top:28px">About</h2><p style="color:#ddd">Learn more about Anime Spirit.</p></section>
+    </main>
+  </div>
+
+  <!-- Debug overlay -->
+  <div class="dbg-overlay" id="dbg" title="Click to hide">
+    <div class="label">Image status (click to hide)</div>
+    <div class="dbg-item"><span id="dbgBanner" class="dot"></span><span>banner.jpg</span></div>
+    <div class="dbg-item" style="margin-top:6px"><span id="dbgProfile" class="dot"></span><span>profile.jpg</span></div>
+    <div class="hint">Place both images next to this HTML file. Filenames must match exactly.</div>
+  </div>
+
+  <script>
+    // --------- Debug image checks ---------
+    function checkImage(src, imgEl, dotEl){
+      const t = new Image();
+      let handled = false;
+      t.onload = function(){ dotEl.classList.remove('err'); dotEl.classList.add('ok'); imgEl.style.opacity = '1'; handled = true; };
+      t.onerror = function(){ dotEl.classList.remove('ok'); dotEl.classList.add('err'); imgEl.style.filter = 'grayscale(80%) contrast(0.9)'; imgEl.style.opacity = '0.6'; handled = true; };
+      t.src = src;
+      setTimeout(()=>{ if(!handled){ if(imgEl.naturalWidth && imgEl.naturalWidth>0) dotEl.classList.add('ok'); else dotEl.classList.add('err'); } },800);
+    }
+
+    const bannerImg = document.getElementById('bannerImg');
+    const profileImg = document.getElementById('profileImg');
+    const dbgBanner = document.getElementById('dbgBanner');
+    const dbgProfile = document.getElementById('dbgProfile');
+
+    checkImage(bannerImg.src, bannerImg, dbgBanner);
+    checkImage(profileImg.src, profileImg, dbgProfile);
+    document.getElementById('dbg').addEventListener('click', function(){ this.style.display = 'none'; });
+
+    // --------- Canvas & DPR setup (animations preserved) ---------
+    const canvas = document.getElementById('fxCanvas');
+    const ctx = canvas.getContext('2d');
+    let DPR = Math.max(1, window.devicePixelRatio || 1);
+    function resize(){
+      DPR = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.round(window.innerWidth * DPR);
+      canvas.height = Math.round(window.innerHeight * DPR);
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.setTransform(DPR,0,0,DPR,0,0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    let current = 'mystery';
+    let rains = [], petals = [], stars = [];
+    const rand = (a,b) => a + Math.random()*(b-a);
+
+    function setupRain(){
+      rains = [];
+      const count = Math.round(window.innerWidth / 6);
+      for(let i=0;i<count;i++) rains.push({x: rand(-200, window.innerWidth + 200), y: rand(-window.innerHeight, window.innerHeight), len: rand(16,34), vx: rand(-30, -6), vy: rand(420, 820), w: rand(0.8,1.4), a: rand(0.12,0.35)});
+    }
+    function drawRain(dt){
+      canvas.style.zIndex = 9999;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for(const r of rains){
+        r.y += r.vy * (dt/1000);
+        r.x += r.vx * (dt/1000);
+        if(r.y > window.innerHeight + r.len){ r.y = -rand(20,200); r.x = rand(-200, window.innerWidth+200); }
+        const x1 = r.x, y1 = r.y, x2 = r.x + (r.vx*0.08), y2 = r.y + r.len;
+        const g = ctx.createLinearGradient(x1,y1,x2,y2);
+        g.addColorStop(0, `rgba(160,200,255,${Math.min(1,r.a)})`);
+        g.addColorStop(0.6, `rgba(120,170,255,${r.a*0.45})`);
+        g.addColorStop(1, `rgba(80,120,200,${r.a*0.12})`);
+        ctx.strokeStyle = g; ctx.lineWidth = r.w; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+      }
+    }
+
+    function setupPetals(){
+      petals = [];
+      const count = Math.round(window.innerWidth / 12);
+      for(let i=0;i<count;i++) petals.push({x:rand(0, window.innerWidth), y:rand(-window.innerHeight, window.innerHeight), r:rand(0.6,1.6), vy:rand(12,36), drift:rand(6,30), ang:rand(0,Math.PI*2), color: Math.random()>0.6? '#ffc0cb':'#ff69b4'});
+    }
+    function drawPetals(dt){
+      canvas.style.zIndex = 9999;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for(const p of petals){
+        p.y += p.vy * (dt/1000);
+        p.x += Math.sin((p.y/40) + p.ang) * (p.drift * (dt/1000));
+        if(p.y > window.innerHeight + 6){ p.y = -6; p.x = rand(0, window.innerWidth); }
+        ctx.beginPath(); ctx.fillStyle = p.color; ctx.globalAlpha = 0.95; ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1;
+      }
+    }
+
+    function setupStars(){
+      stars = [];
+      const bannerBottom = Math.round(document.querySelector('.banner').getBoundingClientRect().bottom);
+      const hArea = Math.max(0, window.innerHeight - bannerBottom);
+      const starCount = Math.round(window.innerWidth * hArea / 12000);
+      for(let i=0;i<starCount;i++) stars.push({x:rand(0,window.innerWidth), y:rand(bannerBottom, window.innerHeight), r:rand(0.6,1.6), base:rand(0.12,0.8), tw:rand(1000,4000)});
+      canvas.style.zIndex = 0;
+    }
+    function drawStars(dt, now){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      const bannerBottom = Math.round(document.querySelector('.banner').getBoundingClientRect().bottom);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, bannerBottom, window.innerWidth, window.innerHeight - bannerBottom);
+      for(const s of stars){
+        const flick = 0.5 + 0.5*Math.abs(Math.sin((now % s.tw)/s.tw*Math.PI*2));
+        const alpha = Math.min(1, s.base * flick);
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+      }
+    }
+
+    // animation loop
+    let lastTime = performance.now();
+    function loop(now){
+      const dt = Math.max(16, now - lastTime); lastTime = now;
+      if(current === 'mystery') drawRain(dt);
+      else if(current === 'community') drawPetals(dt);
+      else if(current === 'about') drawStars(dt, now);
+      else ctx.clearRect(0,0,canvas.width,canvas.height);
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    // Tabs & profile handling + page-class toggles for nav theme
+    const tabs = document.querySelectorAll('.nav-bar a');
+    const contents = document.querySelectorAll('.tab-content');
+    const profileImgEl = document.getElementById('profileImg');
+    const profileWrap = document.getElementById('profileWrap');
+    const banner = document.getElementById('banner');
+
+    if(!profileImgEl.dataset.orig) profileImgEl.dataset.orig = profileImgEl.src;
+
+    function resetThemeState(){
+      // remove theme classes, restore banner image visibility and avatar classes
+      document.body.classList.remove('sakura-bg','dora-bg','page-mystery','page-news','page-community','page-quiz','page-about');
+      banner.classList.remove('dora-banner');
+      profileWrap.classList.remove('dora','sakura');
+      banner.querySelector('.banner-img').style.display = 'block';
+      profileImgEl.src = profileImgEl.dataset.orig;
+      canvas.style.zIndex = 0;
+    }
+
+    function activate(name){
+      // toggle active class on nav anchors
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+      // show/hide tab contents
+      contents.forEach(c => c.classList.toggle('active', c.id === name));
+
+      // reset themes & page classes then set new page class for nav coloring
+      resetThemeState();
+      document.body.classList.add('page-' + name);
+
+      current = name;
+      if(name === 'mystery'){
+        document.body.style.background = '#000';
+        setupRain();
+      } else if(name === 'news'){
+        document.body.style.background = '#03061a';
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        canvas.style.zIndex = 9999;
+      } else if(name === 'community'){
+        // COMMUNITY: keep original banner.jpg visible and apply sakura styling below the banner
+        document.body.classList.add('sakura-bg');
+        profileWrap.classList.add('sakura');
+        banner.querySelector('.banner-img').style.display = 'block';
+        setupPetals();
+      } else if(name === 'quiz'){
+        // QUIZ: use Doraemon CSS banner (hide original banner-img)
+        document.body.classList.add('dora-bg');
+        profileWrap.classList.add('dora');
+        banner.classList.add('dora-banner');
+        banner.querySelector('.banner-img').style.display = 'none';
+        canvas.style.zIndex = 0;
+        // DO NOT change profile image (keep user's image)
+      } else if(name === 'about'){
+        document.body.style.background = '#000';
+        setupStars();
+      }
+    }
+
+    tabs.forEach(t => t.addEventListener('click', ()=> activate(t.dataset.tab)));
+    window.addEventListener('resize', ()=>{ resize(); if(current==='mystery') setupRain(); if(current==='community') setupPetals(); if(current==='about') setupStars(); });
+    // initialize
+    activate('mystery');
+  </script>
+</body>
+</html>
