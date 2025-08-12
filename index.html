@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -27,38 +28,21 @@
     }
     .banner-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:0}
 
-    /* Doraemon-themed banner (minimal & interesting) */
+    /* Geometric banner for quiz section */
     .banner.dora-banner{
-      background: linear-gradient(135deg,#cfeeff 0%, #8fd5ff 45%, #56b7ff 100%);
+      background: white;
+      /* keep overflow visible so profile avatar (which overlaps) is not clipped */
+      overflow: visible;
     }
-    .banner.dora-banner::before{
-      content:"";
-      position:absolute;
-      right:6%;
-      top:22%;
-      width:220px;
-      height:220px;
-      border-radius:50%;
-      background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.18) 0 30%, rgba(255,255,255,0.06) 31% 60%, transparent 61%);
-      transform: rotate(6deg);
-      z-index:1;
-      box-shadow: inset 0 -20px 40px rgba(0,0,0,0.06);
-    }
-    .banner.dora-banner::after{
-      content:"";
-      position:absolute;
-      left:6%;
-      bottom:10%;
-      width:88px;
-      height:64px;
-      border-radius:14px;
-      background:
-        radial-gradient(circle at 50% 22%, rgba(255,255,255,0.9) 0 28%, transparent 30%),
-        linear-gradient(180deg,#fff7d9,#ffd84d);
-      z-index:1;
-      transform:rotate(-6deg);
-      box-shadow:0 6px 12px rgba(0,0,0,0.12);
-      border:2px solid rgba(255,255,255,0.7);
+    /* make the SVG act like the banner background and ensure it doesn't cover avatar */
+    .banner.dora-banner .geometric-svg-banner {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 0;
     }
     .banner.dora-banner .banner-img{ display:none; } /* hide original when using dora banner */
 
@@ -223,6 +207,25 @@
     <!-- Banner with image element (drop banner.jpg next to this HTML file) -->
     <div class="banner" id="banner">
       <img id="bannerImg" class="banner-img" src="banner.jpg" alt="Banner">
+      <!-- Geometric SVG banner for quiz section -->
+      <svg class="geometric-svg-banner" viewBox="0 0 2560 423" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="display:none;">
+        <!-- Top red bar -->
+        <rect x="0" y="0" width="2560" height="103" fill="#d34534" />
+        <!-- Blue region under the red -->
+        <rect x="0" y="103" width="2560" height="320" fill="#368bc7" />
+        <!-- Large white arc (an ellipse centered at bottom) -->
+        <ellipse cx="1280" cy="423" rx="1400" ry="280" fill="#ffffff" />
+        <!-- Yellow circle centered horizontally; its center sits exactly on the red/blue boundary -->
+        <circle cx="1280" cy="143" r="205" fill="#ffe44d" />
+        <!-- Black horizontal line across the center of the yellow circle (rounded ends) -->
+        <rect x="1075" y="136.5" width="410" height="13" rx="6.5" fill="#000000" />
+        <!-- Black center dot (sits on the horizontal bar center) -->
+        <circle cx="1280" cy="143" r="48" fill="#000000" />
+        <!-- Black vertical stick coming down from the center dot (rounded ends) -->
+        <rect x="1270" y="185" width="20" height="120" rx="10" fill="#000000" />
+        <!-- small safety: ensure edges are crisp on some browsers -->
+        <rect x="0" y="0" width="2560" height="423" fill="none" />
+      </svg>
       <!-- Profile centered and overlapping (we will NOT change the image source in quiz) -->
       <div class="profile-wrap" id="profileWrap">
         <img id="profileImg" src="profile.jpg" alt="Profile">
@@ -401,6 +404,7 @@
       banner.classList.remove('dora-banner');
       profileWrap.classList.remove('dora','sakura');
       banner.querySelector('.banner-img').style.display = 'block';
+      banner.querySelector('.geometric-svg-banner').style.display = 'none';
       profileImgEl.src = profileImgEl.dataset.orig;
       canvas.style.zIndex = 0;
     }
@@ -430,11 +434,12 @@
         banner.querySelector('.banner-img').style.display = 'block';
         setupPetals();
       } else if(name === 'quiz'){
-        // QUIZ: use Doraemon CSS banner (hide original banner-img)
+        // QUIZ: use geometric SVG banner (hide original banner-img, show SVG)
         document.body.classList.add('dora-bg');
         profileWrap.classList.add('dora');
         banner.classList.add('dora-banner');
         banner.querySelector('.banner-img').style.display = 'none';
+        banner.querySelector('.geometric-svg-banner').style.display = 'block';
         canvas.style.zIndex = 0;
         // DO NOT change profile image (keep user's image)
       } else if(name === 'about'){
