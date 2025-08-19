@@ -1,4 +1,4 @@
-
+    
 <!doctype html>
 <html lang="en">
 <head>
@@ -13,6 +13,100 @@
 
     /* canvas full-screen (z-index toggled in JS) */
     #fxCanvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;display:block;z-index:0}
+
+    /* Rain effect styles for mystery section */
+    @property --angle {
+      syntax: "<angle>";
+      inherits: false;
+      initial-value: 91deg;
+    }
+
+    .rain-effect {
+      position: fixed;
+      width: 120vw;
+      height: 100vh;
+      cursor: pointer;
+      z-index: 9999;
+      left: -10vw;
+      top: 0;
+      display: none;
+      pointer-events: none;
+    }
+
+    .rain-clickable-area {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      pointer-events: auto;
+      clip-path: polygon(0 0, 100% 0, 100% 420px, 0 420px);
+    }
+
+    .rain-effect.active {
+      display: block;
+    }
+
+    .rain-effect .left,
+    .rain-effect .right {
+      width: 20vw;
+      height: 100vh;
+      left: 10vw;
+      position: absolute;
+      box-sizing: border-box;
+      z-index: 2;
+    }
+
+    .rain-effect .left:hover ~ .drop {
+      --angle: 105deg;
+    }
+
+    .rain-effect .right {
+      left: initial;
+      right: 10vw;
+    }
+
+    .rain-effect .right:hover ~ .drop {
+      --angle: 75deg;
+    }
+
+    .rain-effect .right.center {
+      right: 30vw;
+    }
+
+    .rain-effect .right.center:hover ~ .drop {
+      --angle: 85deg;
+    }
+
+    .rain-effect .left.center {
+      left: 30vw;
+    }
+
+    .rain-effect .left.center:hover ~ .drop {
+      --angle: 95deg;
+    }
+
+    .rain-clickable-area:active {
+      cursor: none;
+      animation: lightning 0.1s linear 0s 2, lightning 0.15s ease-out 0.25s 1;
+    }
+
+    @keyframes lightning {
+      50% {
+        background: radial-gradient(
+          circle at calc(50% - 10vw) -20%,
+          rgba(255, 255, 255, 0.27),
+          rgba(255, 255, 255, 0) 20%
+        ),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.2));
+      }
+    }
+
+    .drop {
+      border: 0.25vmin solid transparent;
+      border-bottom-color: #abc2e9;
+      position: absolute;
+      top: -5vmin;
+      --angle: 91deg;
+    }
 
     /* Ensure site content sits above canvas by default */
     .site{position:relative;z-index:1;min-height:100vh}
@@ -200,8 +294,17 @@
   </style>
 </head>
 <body>
-  <!-- Canvas visual effects (rain/petals/stars) -->
+  <!-- Canvas visual effects (petals/stars) -->
   <canvas id="fxCanvas" aria-hidden="true"></canvas>
+
+  <!-- Rain and Lightning Effect for Mystery Section -->
+  <div class="rain-effect" id="rainEffect">
+    <div class="rain-clickable-area" id="rainClickArea"></div>
+    <div class="left"></div>
+    <div class="right"></div>
+    <div class="left center"></div>
+    <div class="right center"></div>
+  </div>
 
   <div class="site">
     <!-- Banner with image element (drop banner.jpg next to this HTML file) -->
@@ -266,7 +369,7 @@
       </section>
 
       <section id="community" class="tab-content"><h2 style="margin-top:28px">Community</h2><p style="color:#ddd">Fan discussions and activities.</p></section>
-      <section id="quiz" class="tab-content"><h2 style="margin-top:28px">Quiz</h2><p style="color:#ddd">Quiz coming soon — Doraemon themed.</p></section>
+      <section id="quiz" class="tab-content"><h2 style="margin-top:28px">Quiz</h2><p style="color:#ddd">Quiz coming soon â€" Doraemon themed.</p></section>
       <section id="about" class="tab-content"><h2 style="margin-top:28px">About</h2><p style="color:#ddd">Learn more about Anime Spirit.</p></section>
     </main>
   </div>
@@ -315,29 +418,61 @@
     resize();
 
     let current = 'mystery';
-    let rains = [], petals = [], stars = [];
+    let petals = [], stars = [];
     const rand = (a,b) => a + Math.random()*(b-a);
 
-    function setupRain(){
-      rains = [];
-      const count = Math.round(window.innerWidth / 6);
-      for(let i=0;i<count;i++) rains.push({x: rand(-200, window.innerWidth + 200), y: rand(-window.innerHeight, window.innerHeight), len: rand(16,34), vx: rand(-30, -6), vy: rand(420, 820), w: rand(0.8,1.4), a: rand(0.12,0.35)});
-    }
-    function drawRain(dt){
-      canvas.style.zIndex = 9999;
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      for(const r of rains){
-        r.y += r.vy * (dt/1000);
-        r.x += r.vx * (dt/1000);
-        if(r.y > window.innerHeight + r.len){ r.y = -rand(20,200); r.x = rand(-200, window.innerWidth+200); }
-        const x1 = r.x, y1 = r.y, x2 = r.x + (r.vx*0.08), y2 = r.y + r.len;
-        const g = ctx.createLinearGradient(x1,y1,x2,y2);
-        g.addColorStop(0, `rgba(160,200,255,${Math.min(1,r.a)})`);
-        g.addColorStop(0.6, `rgba(120,170,255,${r.a*0.45})`);
-        g.addColorStop(1, `rgba(80,120,200,${r.a*0.12})`);
-        ctx.strokeStyle = g; ctx.lineWidth = r.w; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    // Rain and Lightning Effect Setup
+    const rainEffect = document.getElementById('rainEffect');
+    const rainClickArea = document.getElementById('rainClickArea');
+    let rainDropsGenerated = false;
+
+    function setupRainAndLightning() {
+      if (rainDropsGenerated) return;
+      
+      const numDrops = 500;
+      let dropStyles = '';
+      
+      for (let i = 1; i <= numDrops; i++) {
+        const opacity = Math.random() * 0.9;
+        const leftPos = Math.random() * 120;
+        const borderWidth = Math.random() * 8;
+        const duration = Math.random() * 2.25 + 0.5;
+        const delay = Math.random() * -12.5;
+        const midPoint = Math.random() * 10;
+        
+        const drop = document.createElement('div');
+        drop.className = 'drop';
+        drop.style.opacity = opacity;
+        drop.style.left = leftPos + 'vw';
+        drop.style.borderLeftWidth = borderWidth + 'vmin';
+        drop.style.animation = `fall-${i} ${duration}s ${delay}s ease-in infinite`;
+        
+        rainEffect.appendChild(drop);
+        
+        dropStyles += `
+          @keyframes fall-${i} {
+            ${midPoint}% {
+              transform: rotate(var(--angle)) translateX(0);
+            }
+            to {
+              transform: rotate(var(--angle)) translateX(calc(100vh + 5vmin));
+            }
+          }
+        `;
       }
+      
+      const styleSheet = document.createElement('style');
+      styleSheet.textContent = dropStyles;
+      document.head.appendChild(styleSheet);
+      rainDropsGenerated = true;
+
+      // Add lightning effect to the clickable area
+      rainClickArea.addEventListener('mousedown', function() {
+        document.body.style.animation = 'lightning 0.1s linear 0s 2, lightning 0.15s ease-out 0.25s 1';
+        setTimeout(() => {
+          document.body.style.animation = '';
+        }, 500);
+      });
     }
 
     function setupPetals(){
@@ -381,8 +516,7 @@
     let lastTime = performance.now();
     function loop(now){
       const dt = Math.max(16, now - lastTime); lastTime = now;
-      if(current === 'mystery') drawRain(dt);
-      else if(current === 'community') drawPetals(dt);
+      if(current === 'community') drawPetals(dt);
       else if(current === 'about') drawStars(dt, now);
       else ctx.clearRect(0,0,canvas.width,canvas.height);
       requestAnimationFrame(loop);
@@ -407,6 +541,7 @@
       banner.querySelector('.geometric-svg-banner').style.display = 'none';
       profileImgEl.src = profileImgEl.dataset.orig;
       canvas.style.zIndex = 0;
+      rainEffect.classList.remove('active');
     }
 
     function activate(name){
@@ -421,8 +556,10 @@
 
       current = name;
       if(name === 'mystery'){
-        document.body.style.background = '#000';
-        setupRain();
+        document.body.style.background = 'linear-gradient(180deg, #07131c, #305472)';
+        setupRainAndLightning();
+        rainEffect.classList.add('active');
+        ctx.clearRect(0,0,canvas.width,canvas.height);
       } else if(name === 'news'){
         document.body.style.background = '#03061a';
         ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -449,7 +586,7 @@
     }
 
     tabs.forEach(t => t.addEventListener('click', ()=> activate(t.dataset.tab)));
-    window.addEventListener('resize', ()=>{ resize(); if(current==='mystery') setupRain(); if(current==='community') setupPetals(); if(current==='about') setupStars(); });
+    window.addEventListener('resize', ()=>{ resize(); if(current==='community') setupPetals(); if(current==='about') setupStars(); });
     // initialize
     activate('mystery');
   </script>
